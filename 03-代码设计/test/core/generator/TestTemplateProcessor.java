@@ -10,6 +10,7 @@ import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -58,17 +59,47 @@ public class TestTemplateProcessor implements DataSourceType{
 		//与以上方法比较，好处是降低SUT（TemplateProcessor类）与DOC（DataSourceConfig类）之间的耦合性，解耦它们。
 		//从而使得定位缺陷变得容易。
 		//参照流程：
+
 		//1. 使用EasyMock建立一个DataSourceConfig类的一个Mock对象实例；
+		dsc=EasyMock.createMock(DataSourceConfig.class);
+		ConstDataSource ds=EasyMock.createMock(ConstDataSource.class);
+		EasyMock.expect(dsc.getConstDataSource()).andReturn(ds);
+
 		//2. 录制该实例的STUB模式和行为模式（针对的是非静态方法）；
+		DataHolder dataholder1=EasyMock.createMock(DataHolder.class);
+		EasyMock.expect(dataholder1.getValue()).andReturn("Female");
+		EasyMock.replay(dataholder1);
+
+
+		DataHolder dataholder2=EasyMock.createMock(DataHolder.class);
+		EasyMock.expect (dataholder2.getValue()).andReturn("5");
+		EasyMock.replay (dataholder2);
+
+
+		DataHolder dataholder3=EasyMock.createMock(DataHolder.class);
+		EasyMock.expect(dataholder3.getExpr()).andReturn("${num}+${readme}");
+		EasyMock.expect(dataholder3.fillValue()).andReturn(null);
+		EasyMock.expect(dataholder3.getValue()).andReturn("5.0");
+		EasyMock.replay(dataholder3);
+
+		EasyMock.expect(ds.getVars()).andReturn(new ArrayList<>());
+		EasyMock.expect(ds.getDataHolder(EasyMock.anyString())).andAnswer(() -> {
+			if (EasyMock.getCurrentArguments()[0].equals("sex")){
+				return dataholder1;
+			}else if (EasyMock.getCurrentArguments()[0].equals("readme")){
+				return dataholder2;
+			}else{
+				return dataholder3;
+			}
+		}).times(3);
+		EasyMock.replay(ds);//重放ds所有行为
+		DataSourceConfig dataSourceConfig=DataSourceConfig.newInstance();
+
 		//3. 使用PowerMock建立DataSourceConfig类的静态Mock；
+
+		PowerMock.mockStatic(DataSourceConfig.class);
 		//4. 录制该静态Mock的行为模式（针对的是静态方法）；
-        //------------------------------------------------
-        //以上流程请在这里实现：
-        //
-        //
-        // 这里写代码
-        //
-        //------------------------------------------------
+		EasyMock.expect(DataSourceConfig.newInstance()).andReturn(dataSourceConfig).anyTimes();
 		//5. 重放所有的行为。
 		PowerMock.replayAll(dsc);
 		//初始化一个待测试类（SUT）的实例
